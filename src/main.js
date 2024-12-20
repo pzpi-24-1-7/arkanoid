@@ -9,6 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const table = new Table(0, 0, 800, 400);
   const game = new Game(table, ball);
   const view = new View(game);
-  const controller = new Controller(game, view);
+  new Controller(game, view);
   view.draw();
 });

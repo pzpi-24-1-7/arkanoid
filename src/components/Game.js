@@ -9,34 +9,36 @@ export default class Game {
     this.bricks = new Bricks(800, 50, 20);
     this.bricks.initBricks(2);
     this.isGameOver = false;
+    this.score = 0;
+    this.updateScore();
   }
 
   step() {
     if (this.isGameOver) return;
 
+    this.ballMove();
+    this.wallCollision();
+    this.paddleCollision();
+    this.brickCollision();
+    this.paddle.move(this.table.w);
+    this.gameOver();
+    this.victory();
+  }
+
+  ballMove() {
+    this.ball.x += this.ball.vx;
+    this.ball.y += this.ball.vy;
+  }
+
+  wallCollision() {
+    const b = this.ball;
+    if (b.x - b.r <= 0 || b.x + b.r >= this.table.w) b.vx = -b.vx;
+    if (b.y - b.r <= 0) b.vy = -b.vy;
+  }
+
+  paddleCollision() {
     const b = this.ball;
     const p = this.paddle;
-    const t = this.table;
-    const br = this.bricks;
-
-    b.x += b.vx;
-    b.y += b.vy;
-
-    if (b.x - b.r <= 0 || b.x + b.r >= t.w) {
-      b.vx = -b.vx;
-    }
-
-    if (b.y - b.r <= 0) {
-      b.vy = -b.vy;
-    }
-
-    if (b.y + b.r >= t.h) {
-      this.showMessage("Game Over!");
-      this.resetBall();
-      return;
-    }
-
-    p.move(t.w);
 
     if (b.x > p.x && b.x < p.x + p.width && b.y + b.r >= p.y) {
       if (
@@ -47,44 +49,64 @@ export default class Game {
       }
       b.vy = -b.vy;
     }
+  }
 
-    for (const brick of br.bricks) {
-      if (brick.status === 1) {
-        if (
-          b.x > brick.x &&
-          b.x < brick.x + br.blockWidth &&
-          ((b.y - b.r <= brick.y + br.blockHeight && b.y - b.r >= brick.y) ||
-            (b.y + b.r >= brick.y && b.y + b.r <= brick.y + br.blockHeight))
-        ) {
-          b.vy = -b.vy;
-          brick.status = 0;
-        }
+  brickCollision() {
+    const b = this.ball;
+    const br = this.bricks;
 
-        if (
-          b.y > brick.y &&
-          b.y < brick.y + br.blockHeight &&
-          ((b.x - b.r <= brick.x + br.blockWidth && b.x - b.r >= brick.x) ||
-            (b.x + b.r >= brick.x && b.x + b.r <= brick.x + br.blockWidth))
-        ) {
-          b.vx = -b.vx;
-          brick.status = 0;
-        }
+    const activeBricks = br.bricks.filter((brick) => brick.status === 1);
+
+    activeBricks.forEach((brick) => {
+      const isVerticalCollision =
+        b.x > brick.x &&
+        b.x < brick.x + br.blockWidth &&
+        ((b.y - b.r <= brick.y + br.blockHeight && b.y - b.r >= brick.y) ||
+          (b.y + b.r >= brick.y && b.y + b.r <= brick.y + br.blockHeight));
+
+      const isHorizontalCollision =
+        b.y > brick.y &&
+        b.y < brick.y + br.blockHeight &&
+        ((b.x - b.r <= brick.x + br.blockWidth && b.x - b.r >= brick.x) ||
+          (b.x + b.r >= brick.x && b.x + b.r <= brick.x + br.blockWidth));
+
+      if (isVerticalCollision || isHorizontalCollision) {
+        if (isVerticalCollision) b.vy = -b.vy;
+        if (isHorizontalCollision) b.vx = -b.vx;
+        brick.status = 0;
+        this.updateScore();
       }
-    }
+    });
+  }
 
-    const remainingBricks = br.bricks.some((brick) => brick.status === 1);
-    if (!remainingBricks) {
-      this.showMessage("You Win!");
-      this.resetBall();
+  updateScore() {
+    const scoreElement = document.getElementById("score");
+    const remainingBricks = this.bricks.bricks.filter(
+      (brick) => brick.status === 1
+    ).length;
+    this.score = this.bricks.bricks.length - remainingBricks;
+
+    if (scoreElement) {
+      scoreElement.textContent = `Score: ${this.score}`;
     }
   }
 
-  resetBall() {
-    this.ball.x = 400;
-    this.ball.y = 200;
-    this.ball.vx = 0;
-    this.ball.vy = 0;
-    this.isGameOver = true;
+  victory() {
+    const remainingBricks = this.bricks.bricks.some(
+      (brick) => brick.status === 1
+    );
+    if (!remainingBricks) {
+      this.showMessage("You Win!");
+      this.isGameOver = true;
+    }
+  }
+
+  gameOver() {
+    if (this.ball.y + this.ball.r >= this.table.h) {
+      this.showMessage("Game Over!");
+      this.isGameOver = true;
+      return;
+    }
   }
 
   showMessage(message) {
